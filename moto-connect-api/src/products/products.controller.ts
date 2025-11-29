@@ -2,71 +2,62 @@ import {
   Controller,
   Get,
   Post,
-  Put,
-  Delete,
   Body,
   Param,
-  UseGuards,
+  Put,
+  Delete,
   Req,
-  NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthGuard } from '../shared/auth.guard';
+
+class CreateProductDto {
+  name: string;
+  description: string;
+  price: number;
+  imageUrl?: string;
+}
+
+class UpdateProductDto {
+  name?: string;
+  description?: string;
+  price?: number;
+  imageUrl?: string;
+}
 
 @Controller('products')
 export class ProductsController {
   constructor(private productsService: ProductsService) {}
 
+  // pública
   @Get()
-  async findAll() {
+  findAll() {
     return this.productsService.findAll();
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const product = await this.productsService.findOne(+id);
-    if (!product) throw new NotFoundException('Producto no encontrado');
-    return product;
+  findOne(@Param('id') id: string) {
+    return this.productsService.findOne(Number(id));
   }
-  @UseGuards(JwtAuthGuard)
+
+  // protegida (necesita token)
+  @UseGuards(AuthGuard)
   @Post()
-  async create(
-    @Body()
-    body: {
-      name: string;
-      category: string;
-      description?: string;
-      city: string;
-    },
-    @Req() req,
-  ) {
-    if (req.user.role !== 'admin')
-      throw new NotFoundException('No tienes permisos para crear productos');
-
-    return this.productsService.create(body);
+  create(@Body() dto: CreateProductDto, @Req() req: any) {
+    const ownerId = req.user?.sub;
+    return this.productsService.create({ ...dto, ownerId });
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthGuard)
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any, @Req() req) {
-    if (req.user.role !== 'admin')
-      throw new NotFoundException(
-        'No tienes permisos para actualizar productos',
-      );
-
-    const updated = await this.productsService.update(+id, body);
-    if (!updated) throw new NotFoundException('Producto no encontrado');
-    return updated;
+  update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
+    return this.productsService.update(Number(id), dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthGuard)
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req) {
-    if (req.user.role !== 'admin')
-      throw new NotFoundException('No tienes permisos para eliminar productos');
-
-    const deleted = await this.productsService.remove(+id);
-    if (!deleted) throw new NotFoundException('Producto no encontrado');
-    return { message: 'Producto eliminado correctamente' };
+  remove(@Param('id') id: string) {
+    return this.productsService.remove(Number(id));
   }
 }

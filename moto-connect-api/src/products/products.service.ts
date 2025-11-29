@@ -5,55 +5,46 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
-  // Listar todos los productos
-  async findAll() {
-    return this.prisma.product.findMany();
-  }
-
-  // Obtener un producto por ID
-  async findOne(id: number) {
-    return this.prisma.product.findUnique({
-      where: { id },
-    });
-  }
-
-  // Crear un producto
-  async create(data: {
+  create(data: {
     name: string;
-    category: string;
-    description?: string;
-    city: string;
+    description: string;
+    price: number;
+    ownerId: number;
+    imageUrl?: string;
   }) {
     return this.prisma.product.create({ data });
   }
 
-  // Actualizar un producto por ID
-  async update(
-    id: number,
-    data: {
-      name?: string;
-      category?: string;
-      description?: string;
-      city?: string;
-    },
-  ) {
-    try {
-      return await this.prisma.product.update({
-        where: { id },
-        data,
-      });
-    } catch (error) {
-      return null; // Si no existe, retorna null
-    }
+  findAll() {
+    return this.prisma.product.findMany({
+      include: { owner: { select: { id: true, name: true, email: true } } },
+    });
   }
 
-  // Eliminar un producto por ID
-  async remove(id: number) {
-    try {
-      await this.prisma.product.delete({ where: { id } });
-      return true;
-    } catch (error) {
-      return null; // Si no existe, retorna null
-    }
+  findOne(id: number) {
+    return this.prisma.product.findUnique({
+      where: { id },
+      include: { owner: true },
+    });
+  }
+
+  async update(
+    id: number,
+    data: Partial<{
+      name: string;
+      description: string;
+      price: number;
+      imageUrl?: string;
+    }>,
+  ) {
+    return this.prisma.product.update({ where: { id }, data });
+  }
+
+  remove(id: number) {
+    return this.prisma.product.delete({ where: { id } });
+  }
+
+  findByOwner(ownerId: number) {
+    return this.prisma.product.findMany({ where: { ownerId } });
   }
 }

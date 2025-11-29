@@ -1,55 +1,46 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
+import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async register(name: string, email: string, password: string) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
-    });
-    if (existingUser) {
-      throw new BadRequestException('El email ya está registrado');
-    }
+  async register(data: { name: string; email: string; password: string }) {
+    const existing = await this.usersService.findByEmail(data.email);
+    if (existing) throw new BadRequestException('Email ya registrado');
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await this.prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-      },
+    const hashed = await bcrypt.hash(data.password, 10);
+    const user = await this.usersService.create({
+      name: data.name,
+      email: data.email,
+      password: hashed,
     });
 
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    };
+    // no devolvemos password
+    const { password, ...rest } = user as any;
+    return { user: rest };
   }
 
-  async login(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      throw new BadRequestException('Credenciales inválidas');
-    }
+  async login(data: { email: string; password: string }) {
+    const user = await this.usersService.findByEmail(data.email);
+    if (!user) throw new UnauthorizedException('Credenciales inválidas');
 
-    const passwordValid = await bcrypt.compare(password, user.password);
-    if (!passwordValid) {
-      throw new BadRequestException('Credenciales inválidas');
-    }
+    const ok = await bcrypt.compare(data.password, user.password);
+    if (!ok) throw new UnauthorizedException('Credenciales inválidas');
 
-    const payload = { sub: user.id, role: user.role };
+    const payload = { sub: user.id, email: user.email };
     const token = this.jwtService.sign(payload);
 
-    return { access_token: token };
+    const { password, ...rest } = user as any;
+    return { token, user: rest };
   }
 }

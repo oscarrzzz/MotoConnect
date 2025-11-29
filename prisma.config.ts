@@ -1,10 +1,10 @@
-import { defineConfig, env } from "prisma/config";
-import * as dotenv from "dotenv";
-dotenv.config(); // carga .env
+import { defineConfig } from "@prisma/config";
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
-  datasource: {
-    url: env("DATABASE_URL"),
+  datasources: {
+    db: {
+      provider: "postgresql",
+      url: process.env.DATABASE_URL!,
+    },
   },
-});
+} as any);

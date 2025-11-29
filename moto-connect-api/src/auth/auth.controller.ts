@@ -1,43 +1,42 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
+import { UsersModule } from '../users/users.module';
+
+class RegisterDto {
+  name: string;
+  email: string;
+  password: string;
+}
+class LoginDto {
+  email: string;
+  password: string;
+}
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  // Registro de usuario
   @Post('register')
-  async register(
-    @Body() body: { name: string; email: string; password: string },
-  ) {
-    const { name, email, password } = body;
-
-    if (!name || !email || !password) {
-      throw new BadRequestException('Todos los campos son obligatorios');
-    }
-
-    try {
-      const user = await this.authService.register(name, email, password);
-      return { message: 'Usuario registrado correctamente', user };
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
   }
 
-  // Login de usuario
   @Post('login')
-  async login(@Body() body: { email: string; password: string }) {
-    const { email, password } = body;
-
-    if (!email || !password) {
-      throw new BadRequestException('Email y contraseña son obligatorios');
-    }
-
-    const token = await this.authService.login(email, password);
-    if (!token) {
-      throw new BadRequestException('Credenciales inválidas');
-    }
-
-    return { message: 'Login exitoso', ...token };
+  async login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
   }
 }
+
+@Module({
+  imports: [
+    UsersModule, // <-- IMPORTANTE
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '1d' },
+    }),
+  ],
+  providers: [AuthService],
+  exports: [AuthService],
+})
+export class AuthModule {}

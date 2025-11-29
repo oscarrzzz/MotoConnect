@@ -1,22 +1,19 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
-import { PrismaService } from './prisma/prisma.service';
-import { ProductsModule } from './products/products.module';
-import { AppController } from './app.controller';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
 import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { ProductsModule } from './products/products.module';
+import { SharedModule } from './shared/shared.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }), // 👈 Importante
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
-    }),
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    SharedModule,
     AuthModule,
+    UsersModule,
     ProductsModule,
   ],
-  controllers: [AppController],
-  providers: [PrismaService],
 })
 export class AppModule {}
